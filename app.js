@@ -4,44 +4,6 @@ const faultCodes = Array.isArray(window.FAULT_CODES) ? window.FAULT_CODES : [];
 const $ = (id)=>document.getElementById(id);
 const state = { q:'', system:'', stage:'', tag:'', ranked:null, codeQ:'' };
 
-const manualGallery = [
-  {
-    title: '驾驶室操控装置总览',
-    chapter: '第4章 操作 · 图4-1',
-    desc: '用于快速识别驾驶室主要控制装置、踏板、手柄和开关位置，适合处理挂挡无反应、操作失灵、控制异常类问题时先对照检查。',
-    src: 'assets/manual/cockpit_controls.jpg'
-  },
-  {
-    title: '仪表板与主菜单界面',
-    chapter: '第4章 操作 · 图4-2/图4-3',
-    desc: '可帮助现场人员识别显示器主菜单和报警静音功能，便于处理仪表报警、故障码提示、蜂鸣器报警等问题。',
-    src: 'assets/manual/instrument_panel.jpg'
-  },
-  {
-    title: '组合仪表与速度里程显示',
-    chapter: '第4章 操作 · 图4-4/图4-5',
-    desc: '用于对照车辆运行状态、速度、档位和关键指示信息，适合分析车辆不走、CAN报警、运行状态异常等场景。',
-    src: 'assets/manual/combined_dashboard.jpg'
-  },
-  {
-    title: '倒空集尘杯与机油检查示意',
-    chapter: '第5章 保养 · 5.4.8 / 5.4.9',
-    desc: '展示集尘杯排尘与发动机油位检查相关图示，可用于日常检查、进气系统保养和发动机基础检查。',
-    src: 'assets/manual/dust_collector_oil_check.jpg'
-  },
-  {
-    title: '清理发动机与消音器区域',
-    chapter: '第5章 保养 · 5.4.17',
-    desc: '用于识别发动机和消音器周边清洁重点区域，适合高温、冒烟、积尘、散热差等故障预防与检查。',
-    src: 'assets/manual/engine_muffler_cleaning.jpg'
-  },
-  {
-    title: '蓄电池外形与故障诊断',
-    chapter: '第5章 保养 · 图5-147',
-    desc: '用于识别蓄电池结构和充电不足、过充、电气回路故障等检查方向，适合无法启动、电瓶报警、电气故障类问题。',
-    src: 'assets/manual/battery_shape_diagnosis.jpg'
-  }
-];
 
 const dict = {
   '漏油':['渗油','漏液','渗漏','漏','油管','接头漏油','密封'],
@@ -183,7 +145,6 @@ function init(){
   if($('codeSearch')) $('codeSearch').addEventListener('input', e=>{state.codeQ=e.target.value.trim(); renderFaultCodeList();});
   if($('codeClear')) $('codeClear').onclick=()=>{state.codeQ=''; $('codeSearch').value=''; renderFaultCodeList();};
   renderManualKnowledge();
-  renderManualGallery();
   renderFaultCodeList();
   renderStats(); renderSide(); render();
 }
@@ -243,12 +204,6 @@ function renderManualKnowledge(activeIds=[]){
     const items = manual.filter(m=>m.system===sys);
     $('manualList').innerHTML = items.map(m=>`<article class="manual-mini active"><b>${escapeHtml(m.system)}</b><span>${escapeHtml(m.chapter)}｜${escapeHtml(m.page)}</span><p>${escapeHtml(m.summary)}</p><p><b>方案：</b>${escapeHtml(m.solution)}</p></article>`).join('');
   });
-}
-
-function renderManualGallery(){
-  const el = $('manualGallery');
-  if(!el) return;
-  el.innerHTML = manualGallery.map(item=>`<article class="manual-gallery-card"><img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.title)}" loading="lazy" /><div class="manual-gallery-body"><b>${escapeHtml(item.title)}</b><span>${escapeHtml(item.chapter)}</span><p>${escapeHtml(item.desc)}</p></div></article>`).join('');
 }
 
 
