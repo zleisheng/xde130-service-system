@@ -4,7 +4,7 @@
 // 3）Supabase：可选。填写后可集中记录所有用户登录/查询；不填写则只保存当前浏览器本地记录。
 window.XDE130_CONFIG = {
   LOGIN_PASSWORD: "XDE130@2026",
-  ADMIN_PASSWORD: "XDE130@2027",
+  ADMIN_PASSWORD: "XDE130-ADMIN",
 
   // 可选：Supabase 项目地址和 anon key
   // SUPABASE_URL: "https://xxxx.supabase.co",

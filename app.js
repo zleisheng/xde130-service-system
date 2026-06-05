@@ -108,6 +108,34 @@ function buildPlan(input, ranked, manuals){
   return {top, best, topSystems, topTags, tokens, confidence, highRisk, firstActions, combinedChecks, combinedCauses, codeHits};
 }
 
+
+function buildAIDiagnosis(input, plan, ranked){
+  const text = String(input || '');
+  const tokens = tokenize(text);
+  const systems = (plan.topSystems || []).slice(0,3).map(x => x[0]).filter(Boolean);
+  const manualSystems = (plan.top || []).slice(0,3).map(x => x.system).filter(Boolean);
+  const codeSystems = (plan.codeHits || []).slice(0,3).map(x => x.system).filter(Boolean);
+  const allSystems = uniq([...manualSystems, ...codeSystems, ...systems]).slice(0,5);
+  const urgent = plan.risk && plan.risk.level === '高';
+  const hasCode = (text.match(/\d{3}/g) || []).length > 0;
+  const missing = [];
+  if(!hasCode) missing.push('补充仪表故障代码或报警颜色');
+  if(!/小时|h|H/.test(text)) missing.push('补充车辆工作小时数');
+  if(!/冷车|热车|重载|空载|上坡|下坡|雨天|启动|行驶|举升|制动|转向/.test(text)) missing.push('补充故障发生工况');
+  if(!/左|右|前|后|上|下|接头|管路|仪表|轮边|发动机|电机|泵|阀|水箱/.test(text)) missing.push('补充具体部位或漏点位置');
+  const confidence = plan.confidence || 0;
+  let conclusion = '';
+  if(confidence >= 75){ conclusion = '匹配度较高，可优先按手册建议步骤处理，再用历史案例验证。'; }
+  else if(confidence >= 45){ conclusion = '匹配度中等，建议补充故障码、工况和具体部位后复查。'; }
+  else { conclusion = '匹配度偏低，当前描述较少，建议先补充关键信息，避免误判。'; }
+  const aiSteps = [];
+  if(urgent) aiSteps.push('AI判断：该故障存在安全风险，先停车隔离、确认制动/转向/温度/电气安全。');
+  aiSteps.push('第一优先：按操作与维修保养手册执行检查，不直接拆件。');
+  aiSteps.push('第二优先：对照历史相似案例，确认是否出现相同工况和相同报警。');
+  aiSteps.push('第三优先：记录处理结果，形成新的服务案例，便于后续复用。');
+  return { tokens, systems: allSystems, missing: missing.slice(0,4), conclusion, aiSteps };
+}
+
 function getRiskProfile(input, plan){
   const raw = String(input || '');
   const highWords = ['制动','刹车','转向','方向重','高温','水温高','过热','冒烟','着火','失火','无法启动','断电','牵引','驻车','压力低','蓄能器','电气报警'];
@@ -177,7 +205,7 @@ function ask(){
   const plan = buildPlan(text, ranked, manuals);
   plan.risk = getRiskProfile(text, plan);
   renderAnswer(text, plan, ranked);
-  $('aiHint').textContent = `已生成服务排查建议：匹配 ${manuals.length} 条手册知识、${plan.codeHits.length} 条故障代码。`;
+  $('aiHint').textContent = `已生成服务排查建议：匹配 ${ranked.length} 条历史经验、${manuals.length} 条手册知识、${plan.codeHits.length} 条故障代码。`;
   logUsage('fault_query', text, ranked.length + plan.codeHits.length, {
     manualMatches: manuals.length,
     caseMatches: ranked.length,
@@ -199,17 +227,24 @@ function renderAnswer(text,p,ranked){
     ${m.warning?`<div class="warning">⚠ ${escapeHtml(m.warning)}</div>`:''}
   </article>`).join('') : '<p>未匹配到手册知识，请补充更具体故障描述。</p>';
   const bestHtml = `<div class="best-summary service-note"><h4>服务处理提示</h4><p>请结合故障代码、仪表报警、现场现象和手册检查步骤逐项确认。高风险报警先停车、断电、泄压，确认安全后再检查；必要时联系技术支持。</p><button id="copyAi">复制分析结果</button></div>`;
+  const safeCases = (ranked||[]).slice(0,5);
+  const caseHtml = safeCases.length ? `<section class="best-summary safe-case-summary"><h3>第二步：历史故障匹配参考</h3><p class="hint">系统已调用内部历史案例库进行匹配，以下仅显示脱敏后的现场现象和处理方向，不显示案例编号、客户、车辆、矿区等内部信息。</p>${safeCases.map(x=>`<details class="safe-case-card"><summary><b>${escapeHtml(x.system||'相关系统')}</b><span>匹配度 ${escapeHtml(x._score||'')}</span></summary><p><b>相似现象：</b>${escapeHtml(x.fault||'')}</p><p><b>参考处理：</b>${escapeHtml(x.solution||'')}</p></details>`).join('')}</section>` : `<section class="best-summary safe-case-summary"><h3>第二步：历史故障匹配参考</h3><p>暂无直接相似历史经验，请补充故障代码、报警颜色、发生工况、渗漏位置和车辆小时数。</p></section>`;
   const codeHtml = (p.codeHits||[]).length ? `<section class="best-summary"><h3>匹配故障代码</h3><div class="answer-code-list">${p.codeHits.slice(0,6).map(c=>`<article class="answer-code risk-${escapeHtml(c.risk)}"><b>${escapeHtml(c.code)}</b><span>${escapeHtml(c.name)}</span><em>${escapeHtml(c.levelName||'未标注')} ｜ 风险${escapeHtml(c.risk)}</em><p>${escapeHtml(c.advice)}</p></article>`).join('')}</div></section>` : '';
+  const ai = buildAIDiagnosis(text, p, ranked);
+  const aiPanelHtml = `<section class="ai-diagnosis-panel"><div class="ai-title"><span>AI辅助诊断</span><b>${escapeHtml(ai.conclusion)}</b></div><div class="ai-grid"><div><h4>AI优先判断</h4><ol>${ai.aiSteps.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></div><div><h4>重点系统方向</h4><p>${ai.systems.length ? ai.systems.map(x=>`<span class="ai-chip">${escapeHtml(x)}</span>`).join('') : '暂无明确系统方向'}</p><h4>建议补充信息</h4><ul>${ai.missing.length ? ai.missing.map(x=>`<li>${escapeHtml(x)}</li>`).join('') : '<li>当前描述较完整，可按步骤处理。</li>'}</ul></div></div></section>`;
   $('answerBox').classList.remove('hidden');
   $('answerBox').innerHTML = `<div class="answer-head"><div><h2>服务查询结果</h2><p>输入内容：${escapeHtml(text)}</p><div class="copy-actions"><button id="copyFull" type="button">复制完整分析</button><button id="copyChecks" type="button">复制检查步骤</button><button id="copySolution" type="button">复制解决方案</button></div></div><div class="risk-wrap"><div class="risk-badge risk-${p.risk.level}"><span>风险等级</span><b>${p.risk.level}</b></div><div class="confidence"><span>综合匹配度</span><b>${p.confidence}%</b></div></div></div>
   <div class="risk-advice risk-${p.risk.level}"><b>风险建议：</b>${escapeHtml(p.risk.advice)}</div>
   ${p.highRisk?'<div class="danger">高风险提示：该故障可能涉及制动、转向、高温、断电、火灾或启动安全。请先停机隔离，确认安全后再排查。</div>':''}
+  ${aiPanelHtml}
   <div class="answer-grid"><div class="answer-main">
-    <section class="best-summary"><h3>现场优先处理顺序</h3><ol>${p.firstActions.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></section>
+    <section class="best-summary"><h3>第一步：操作维修保养手册解决方案</h3><p class="hint">优先按照操作与维修保养手册进行检查和处理，避免只依赖历史经验造成误判。</p></section>
+    ${manualHtml}${bestHtml}
+    ${caseHtml}
     ${codeHtml}
+    <section class="best-summary"><h3>现场优先处理顺序</h3><ol>${p.firstActions.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ol></section>
     <section class="best-summary"><h3>综合可能原因</h3><ul>${p.combinedCauses.slice(0,8).map(x=>`<li>${escapeHtml(x)}</li>`).join('') || '<li>暂无</li>'}</ul></section>
     <section class="best-summary"><h3>综合检查步骤</h3><ol>${p.combinedChecks.slice(0,10).map(x=>`<li>${escapeHtml(x)}</li>`).join('') || '<li>暂无</li>'}</ol></section>
-    <h3>手册依据与解决方案</h3>${manualHtml}${bestHtml}
   </div><div class="answer-side"><h3>识别关键词</h3><div class="keywords">${(p.tokens.slice(0,18).map(t=>`<span>${escapeHtml(t)}</span>`).join('') || '<span>无</span>')}</div><h3>相关系统方向</h3><div>${(p.topSystems.map(([k,v])=>`<span class="system-chip">${escapeHtml(k)} · ${v}条</span>`).join('') || '<span class="system-chip">暂无</span>')}</div><h3>相似标签</h3><ul>${(p.topTags.map(t=>`<li>${escapeHtml(t)}</li>`).join('') || '<li>暂无</li>')}</ul><p class="hint">本系统为服务辅助工具，最终处理以现场检测、故障码和公司技术规范为准。</p></div></div>`;
   if($('copyAi')) $('copyAi').onclick = ()=>copyText(copyAnalysisText(text, p, best));
   if($('copyFull')) $('copyFull').onclick = ()=>copyText(copyAnalysisText(text, p, best));

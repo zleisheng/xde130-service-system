@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>XDE130 服务人员维修查询系统 V6.1</title>
+  <title>XDE130 服务人员维修查询系统 V6.5 AI辅助诊断版</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -28,14 +28,14 @@
     </div>
   </section>
   <div id="appShell" class="app-shell hidden">
-  <div class="lang-bar"><span>语言 / Language / Langue</span><button id="langZh" type="button">中文</button><button id="langEn" type="button">English</button><button id="langFr" type="button">Français</button></div>
+  <div class="lang-bar"><span>语言 / Language</span><button id="langZh" type="button">中文</button><button id="langEn" type="button">English</button></div>
   <header class="hero leadership-hero">
     <div>
-      <p class="eyebrow">XDE130 服务人员维修查询 · V6.1</p>
+      <p class="eyebrow">XDE130 服务人员维修查询 · V6.5 AI辅助诊断</p>
       <h1>XDE130 服务人员维修查询系统</h1>
-      <p class="sub">输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。</p>
+      <p class="sub">输入故障代码或现场现象，系统优先依据操作与维修保养手册输出解决方案，再匹配历史故障案例，并由AI辅助生成排查优先级。</p>
       <div class="hero-points">
-        <span>手机可用</span><span>现场查询</span><span>经验沉淀</span><span>安全提醒</span>
+        <span>手机可用</span><span>现场查询</span><span>AI辅助诊断</span><span>安全提醒</span>
       </div>
     </div>
     <div class="hero-card">
@@ -51,7 +51,7 @@
     <section class="quick-start-panel">
       <div>
         <b>服务快速查询</b>
-        <p>输入故障代码、报警名称或现场现象，直接生成现场检查建议。</p>
+        <p>输入故障代码、报警名称或现场现象，系统会生成AI辅助诊断、手册方案和历史案例参考。</p>
       </div>
       <a href="#query">开始查询</a>
     </section>
@@ -81,7 +81,7 @@
       <label for="faultInput">输入故障代码 / 报警名称 / 现场现象</label>
       <textarea id="faultInput" rows="4" placeholder="例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏"></textarea>
       <div class="ask-actions">
-        <button id="askBtn">服务查询</button>
+        <button id="askBtn">AI服务查询</button>
         <button id="clearBtn2" class="secondary">清空</button>
       </div>
       <div class="tips">
@@ -275,7 +275,7 @@
         "密码不正确，请重新输入。":"Incorrect password. Please try again.",
         "XDE130 现场故障知识库 · V6":"XDE130 On-site Fault Knowledge Base · V5.5",
         "XDE130故障案例库加操作与维修保养手册":"XDE130 Fault Case Library + Operation and Maintenance Manual",
-        "输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。":"Enter the on-site fault symptom. The system will reference historical fault cases and the XDE130 Electric Drive Dump Truck Operation and Maintenance Manual to output possible causes, inspection sequence, solutions, and safety reminders.",
+        "输入故障代码或现场现象，系统优先依据操作与维修保养手册输出解决方案，再匹配历史故障案例，并由AI辅助生成排查优先级。":"Enter the on-site fault symptom. The system will reference historical fault cases and the XDE130 Electric Drive Dump Truck Operation and Maintenance Manual to output possible causes, inspection sequence, solutions, and safety reminders.",
         "手机可用":"Mobile Ready",
         "现场查询":"On-site Search",
         "经验沉淀":"Experience Library",
@@ -387,7 +387,7 @@
           "XDE130 现场故障知识库 · V6": "Base de connaissances des pannes sur site XDE130 · V5.5",
           "XDE130 现场故障知识库 · V5.2": "Base de connaissances des pannes sur site XDE130 · V5.5",
           "XDE130故障案例库加操作与维修保养手册": "Bibliothèque de cas de pannes XDE130 + Manuel d'utilisation et d'entretien",
-          "输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。": "Saisissez le phénomène de panne sur site. Le système se réfère aux cas historiques et au manuel d'utilisation et d'entretien du XDE130 pour fournir les causes possibles, l'ordre de contrôle, les solutions et les rappels de sécurité.",
+          "输入故障代码或现场现象，系统优先依据操作与维修保养手册输出解决方案，再匹配历史故障案例，并由AI辅助生成排查优先级。": "Saisissez le phénomène de panne sur site. Le système se réfère aux cas historiques et au manuel d'utilisation et d'entretien du XDE130 pour fournir les causes possibles, l'ordre de contrôle, les solutions et les rappels de sécurité.",
           "手机可用": "Compatible mobile",
           "现场查询": "Recherche sur site",
           "经验沉淀": "Capitalisation d'expérience",
@@ -524,7 +524,8 @@
         }
         node.childNodes && node.childNodes.forEach(child=>walk(child, lang));
       }
-      window.XDE130_LANG = localStorage.getItem('xde130_lang') || 'zh';
+      const savedLang = localStorage.getItem('xde130_lang') || 'zh';
+      window.XDE130_LANG = (savedLang === 'en' || savedLang === 'zh') ? savedLang : 'zh';
       window.applyXde130Language = function(){
         const lang = window.XDE130_LANG;
         if (lang !== 'zh') walk(document.body, lang);
@@ -534,20 +535,18 @@
           const pmap = placeholderMaps[lang] || {};
           el.setAttribute('placeholder', lang === 'zh' ? original : (pmap[original] || convertText(original, lang)));
         });
-        const zh = document.getElementById('langZh'), en = document.getElementById('langEn'), fr = document.getElementById('langFr');
-        if (zh && en && fr) {
+        const zh = document.getElementById('langZh'), en = document.getElementById('langEn');
+        if (zh && en) {
           zh.classList.toggle('active', lang==='zh');
           en.classList.toggle('active', lang==='en');
-          fr.classList.toggle('active', lang==='fr');
         }
-        document.documentElement.lang = lang === 'fr' ? 'fr' : (lang === 'en' ? 'en' : 'zh-CN');
+        document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
       };
       window.setXde130Language = function(lang){ localStorage.setItem('xde130_lang', lang); location.reload(); };
       document.addEventListener('DOMContentLoaded', function(){
-        const zh = document.getElementById('langZh'), en = document.getElementById('langEn'), fr = document.getElementById('langFr');
+        const zh = document.getElementById('langZh'), en = document.getElementById('langEn');
         if (zh) zh.onclick = ()=>window.setXde130Language('zh');
         if (en) en.onclick = ()=>window.setXde130Language('en');
-        if (fr) fr.onclick = ()=>window.setXde130Language('fr');
         window.applyXde130Language();
         new MutationObserver(()=>{ if(window.XDE130_LANG!=='zh') window.applyXde130Language(); }).observe(document.body,{childList:true,subtree:true});
       });
