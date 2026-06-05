@@ -13,7 +13,7 @@
 ## 默认密码
 
 普通登录密码：XDE130@2026
-管理员密码：XDE130-ADMIN
+管理员密码：请在 config.js 中自行设置
 
 ## GitHub Pages 上传文件
 
