@@ -3,6 +3,13 @@ const manual = Array.isArray(window.MANUAL_KNOWLEDGE) ? window.MANUAL_KNOWLEDGE 
 const faultCodes = Array.isArray(window.FAULT_CODES) ? window.FAULT_CODES : [];
 const $ = (id)=>document.getElementById(id);
 const state = { q:'', system:'', stage:'', tag:'', ranked:null, codeQ:'' };
+let codeLogTimer = null;
+function logUsage(eventType, queryText, matchedCount, detail){
+  if(window.XDE130_TRACKER){
+    window.XDE130_TRACKER.logEvent(eventType, { queryText, matchedCount, detail: detail || {} });
+  }
+}
+
 
 
 const dict = {
@@ -129,6 +136,7 @@ function copySolutionText(text, p, best){
 function init(){
   $('totalCount').textContent = data.length;
   document.body.classList.add('privacy-version');
+  document.body.classList.add('service-version');
   $('manualCount').textContent = manual.length;
   if($('codeCount')) $('codeCount').textContent = faultCodes.length;
   if(!data.length){ $('aiHint').textContent='数据没有读取到。请确认 data.js 已上传完整，文件名必须是 data.js。'; }
@@ -142,7 +150,17 @@ function init(){
   $('systemFilter').addEventListener('change', e=>{state.system=e.target.value; render()});
   $('tagFilter').addEventListener('change', e=>{state.tag=e.target.value; render()});
   $('clearBtn').onclick=()=>{['q','systemFilter','tagFilter'].forEach(id=>$(id).value=''); Object.assign(state,{q:'',system:'',stage:'',tag:'',ranked:null}); $('answerBox').classList.add('hidden'); render()};
-  if($('codeSearch')) $('codeSearch').addEventListener('input', e=>{state.codeQ=e.target.value.trim(); renderFaultCodeList();});
+  if($('codeSearch')) $('codeSearch').addEventListener('input', e=>{
+    state.codeQ=e.target.value.trim();
+    renderFaultCodeList();
+    clearTimeout(codeLogTimer);
+    codeLogTimer = setTimeout(()=>{
+      if(state.codeQ && state.codeQ.length >= 2){
+        const matched = rankFaultCodes(state.codeQ).length;
+        logUsage('code_query', state.codeQ, matched, { module:'fault_code_search' });
+      }
+    }, 900);
+  });
   if($('codeClear')) $('codeClear').onclick=()=>{state.codeQ=''; $('codeSearch').value=''; renderFaultCodeList();};
   renderManualKnowledge();
   renderFaultCodeList();
@@ -159,7 +177,13 @@ function ask(){
   const plan = buildPlan(text, ranked, manuals);
   plan.risk = getRiskProfile(text, plan);
   renderAnswer(text, plan, ranked);
-  $('aiHint').textContent = `已匹配 ${manuals.length} 条手册知识、${ranked.length} 条相似历史案例、${plan.codeHits.length} 条故障代码。`;
+  $('aiHint').textContent = `已生成服务排查建议：匹配 ${manuals.length} 条手册知识、${plan.codeHits.length} 条故障代码。`;
+  logUsage('fault_query', text, ranked.length + plan.codeHits.length, {
+    manualMatches: manuals.length,
+    caseMatches: ranked.length,
+    codeMatches: plan.codeHits.length,
+    risk: plan.risk && plan.risk.level
+  });
   renderManualKnowledge(manuals.slice(0,5).map(m=>m.id));
   render();
   $('answerBox').scrollIntoView({behavior:'smooth',block:'start'});
@@ -174,10 +198,10 @@ function renderAnswer(text,p,ranked){
     <div class="solutionLine"><b>建议方案：</b>${escapeHtml(m.solution)}</div>
     ${m.warning?`<div class="warning">⚠ ${escapeHtml(m.warning)}</div>`:''}
   </article>`).join('') : '<p>未匹配到手册知识，请补充更具体故障描述。</p>';
-  const bestHtml = best ? `<div class="best-summary"><h4>最相似历史案例</h4><p><b>故障：</b>${escapeHtml(best.fault||'未填写')}</p><p><b>解决方案：</b>${escapeHtml(best.solution||'原表未填写处理方法。')}</p><p><small>系统：${escapeHtml(best.system||'-')} ｜ 案例：${escapeHtml(best.caseNo||'-')} ｜ 小时数：${escapeHtml(best.hours||'-')} ｜ 匹配分：${best._score}</small></p><button id="copyAi">复制分析结果</button></div>` : `<div class="best-summary"><h4>未找到直接历史案例</h4><p>建议补充：故障码、报警颜色、发生工况、漏点位置、车辆小时数。</p></div>`;
+  const bestHtml = `<div class="best-summary service-note"><h4>服务处理提示</h4><p>请结合故障代码、仪表报警、现场现象和手册检查步骤逐项确认。高风险报警先停车、断电、泄压，确认安全后再检查；必要时联系技术支持。</p><button id="copyAi">复制分析结果</button></div>`;
   const codeHtml = (p.codeHits||[]).length ? `<section class="best-summary"><h3>匹配故障代码</h3><div class="answer-code-list">${p.codeHits.slice(0,6).map(c=>`<article class="answer-code risk-${escapeHtml(c.risk)}"><b>${escapeHtml(c.code)}</b><span>${escapeHtml(c.name)}</span><em>${escapeHtml(c.levelName||'未标注')} ｜ 风险${escapeHtml(c.risk)}</em><p>${escapeHtml(c.advice)}</p></article>`).join('')}</div></section>` : '';
   $('answerBox').classList.remove('hidden');
-  $('answerBox').innerHTML = `<div class="answer-head"><div><h2>智能分析结果</h2><p>输入内容：${escapeHtml(text)}</p><div class="copy-actions"><button id="copyFull" type="button">复制完整分析</button><button id="copyChecks" type="button">复制检查步骤</button><button id="copySolution" type="button">复制解决方案</button></div></div><div class="risk-wrap"><div class="risk-badge risk-${p.risk.level}"><span>风险等级</span><b>${p.risk.level}</b></div><div class="confidence"><span>综合匹配度</span><b>${p.confidence}%</b></div></div></div>
+  $('answerBox').innerHTML = `<div class="answer-head"><div><h2>服务查询结果</h2><p>输入内容：${escapeHtml(text)}</p><div class="copy-actions"><button id="copyFull" type="button">复制完整分析</button><button id="copyChecks" type="button">复制检查步骤</button><button id="copySolution" type="button">复制解决方案</button></div></div><div class="risk-wrap"><div class="risk-badge risk-${p.risk.level}"><span>风险等级</span><b>${p.risk.level}</b></div><div class="confidence"><span>综合匹配度</span><b>${p.confidence}%</b></div></div></div>
   <div class="risk-advice risk-${p.risk.level}"><b>风险建议：</b>${escapeHtml(p.risk.advice)}</div>
   ${p.highRisk?'<div class="danger">高风险提示：该故障可能涉及制动、转向、高温、断电、火灾或启动安全。请先停机隔离，确认安全后再排查。</div>':''}
   <div class="answer-grid"><div class="answer-main">
@@ -186,10 +210,8 @@ function renderAnswer(text,p,ranked){
     <section class="best-summary"><h3>综合可能原因</h3><ul>${p.combinedCauses.slice(0,8).map(x=>`<li>${escapeHtml(x)}</li>`).join('') || '<li>暂无</li>'}</ul></section>
     <section class="best-summary"><h3>综合检查步骤</h3><ol>${p.combinedChecks.slice(0,10).map(x=>`<li>${escapeHtml(x)}</li>`).join('') || '<li>暂无</li>'}</ol></section>
     <h3>手册依据与解决方案</h3>${manualHtml}${bestHtml}
-  </div><div class="answer-side"><h3>识别关键词</h3><div class="keywords">${(p.tokens.slice(0,18).map(t=>`<span>${escapeHtml(t)}</span>`).join('') || '<span>无</span>')}</div><h3>历史案例集中系统</h3><div>${(p.topSystems.map(([k,v])=>`<span class="system-chip">${escapeHtml(k)} · ${v}条</span>`).join('') || '<span class="system-chip">暂无</span>')}</div><h3>相似标签</h3><ul>${(p.topTags.map(t=>`<li>${escapeHtml(t)}</li>`).join('') || '<li>暂无</li>')}</ul><p class="hint">本系统为维修辅助工具，最终处理以现场检测、故障码和厂家规范为准。</p></div></div>`;
-  if(best){
-    $('copyAi').onclick = ()=>copyText(copyAnalysisText(text, p, best));
-  }
+  </div><div class="answer-side"><h3>识别关键词</h3><div class="keywords">${(p.tokens.slice(0,18).map(t=>`<span>${escapeHtml(t)}</span>`).join('') || '<span>无</span>')}</div><h3>相关系统方向</h3><div>${(p.topSystems.map(([k,v])=>`<span class="system-chip">${escapeHtml(k)} · ${v}条</span>`).join('') || '<span class="system-chip">暂无</span>')}</div><h3>相似标签</h3><ul>${(p.topTags.map(t=>`<li>${escapeHtml(t)}</li>`).join('') || '<li>暂无</li>')}</ul><p class="hint">本系统为服务辅助工具，最终处理以现场检测、故障码和公司技术规范为准。</p></div></div>`;
+  if($('copyAi')) $('copyAi').onclick = ()=>copyText(copyAnalysisText(text, p, best));
   if($('copyFull')) $('copyFull').onclick = ()=>copyText(copyAnalysisText(text, p, best));
   if($('copyChecks')) $('copyChecks').onclick = ()=>copyText(copyCheckText(text, p));
   if($('copySolution')) $('copySolution').onclick = ()=>copyText(copySolutionText(text, p, best));

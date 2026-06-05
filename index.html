@@ -3,35 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>XDE130 故障案例库 + 操作与维修保养手册</title>
+  <title>XDE130 服务人员维修查询系统 V6.1</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <section id="loginGate" class="login-gate">
     <div class="login-card">
       <div class="login-logo">XDE130</div>
-      <h1>XDE130 故障案例库</h1>
-      <p>请输入访问密码后进入系统。</p>
+      <h1>XDE130 服务人员维修查询系统</h1>
+      <p>请输入姓名/工号和访问密码后进入系统。</p>
+      <input id="loginName" type="text" placeholder="姓名 / Name" autocomplete="name" />
+      <input id="loginId" type="text" placeholder="工号 / Employee ID（可选）" autocomplete="off" />
+      <select id="loginRole">
+        <option value="维修人员">维修人员</option>
+        <option value="服务工程师">服务工程师</option>
+        <option value="技术支持">技术支持</option>
+        <option value="管理人员">管理人员</option>
+        <option value="客户维修工">客户维修工</option>
+      </select>
       <input id="loginPassword" type="password" placeholder="请输入访问密码" autocomplete="current-password" />
       <button id="loginBtn" type="button">进入系统</button>
       <p id="loginMsg" class="login-msg"></p>
+      <small class="login-note">说明：未接入 Supabase 时，记录只保存在当前浏览器；接入后可集中查看所有登录/查询记录。</small>
     </div>
   </section>
   <div id="appShell" class="app-shell hidden">
   <div class="lang-bar"><span>语言 / Language / Langue</span><button id="langZh" type="button">中文</button><button id="langEn" type="button">English</button><button id="langFr" type="button">Français</button></div>
   <header class="hero leadership-hero">
     <div>
-      <p class="eyebrow">XDE130 现场故障知识库 · V5.5</p>
-      <h1>XDE130故障案例库加操作与维修保养手册</h1>
-      <p class="sub">输入现场故障现象，系统会同时参考历史故障和《XDE130 电传动自卸车操作与保养手册》，输出可能原因、检查顺序、解决方案和安全提醒。</p>
+      <p class="eyebrow">XDE130 服务人员维修查询 · V6.1</p>
+      <h1>XDE130 服务人员维修查询系统</h1>
+      <p class="sub">输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。</p>
       <div class="hero-points">
         <span>手机可用</span><span>现场查询</span><span>经验沉淀</span><span>安全提醒</span>
       </div>
     </div>
     <div class="hero-card">
-      <span>历史故障记录</span>
+      <span>服务查询工具</span>
       <strong id="totalCount">0</strong>
-      <small>故障案例库</small>
+      <small>内部辅助数据</small>
       <span class="manual-count"><b id="manualCount">0</b> 条手册知识</span>
       <span class="manual-count"><b id="codeCount">0</b> 条故障代码</span>
     </div>
@@ -40,8 +50,8 @@
   <main>
     <section class="quick-start-panel">
       <div>
-        <b>现场快速查询</b>
-        <p>优先输入故障现象，也可以直接点击常见故障按钮自动分析。</p>
+        <b>服务快速查询</b>
+        <p>输入故障代码、报警名称或现场现象，直接生成现场检查建议。</p>
       </div>
       <a href="#query">开始查询</a>
     </section>
@@ -68,10 +78,10 @@
     </section>
 
     <section class="ask-panel" id="query">
-      <label for="faultInput">输入现场故障现象 / 故障代码</label>
-      <textarea id="faultInput" rows="4" placeholder="例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏、发动机黄色报警"></textarea>
+      <label for="faultInput">输入故障代码 / 报警名称 / 现场现象</label>
+      <textarea id="faultInput" rows="4" placeholder="例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏"></textarea>
       <div class="ask-actions">
-        <button id="askBtn">智能分析并查询</button>
+        <button id="askBtn">服务查询</button>
         <button id="clearBtn2" class="secondary">清空</button>
       </div>
       <div class="tips">
@@ -94,7 +104,7 @@
     <section class="fault-code-panel panel">
       <div class="section-title">
         <h2>代码查询</h2>
-        <p>输入故障代码或名称后显示匹配结果；故障代码库明细默认隐藏，点击结果可展开查看现场建议。</p>
+        <p>输入故障代码或报警名称后显示匹配结果；明细默认隐藏，点击结果展开查看现场建议。</p>
       </div>
       <div class="code-search">
         <input id="codeSearch" placeholder="输入故障代码或名称：601 / 制动压力低 / CAN / 电机温度高" />
@@ -103,6 +113,26 @@
       <div id="codeResultInfo" class="code-result-info"></div>
       <div id="faultCodeList" class="fault-code-list"></div>
     </section>
+
+    <details class="admin-log-panel panel">
+      <summary>管理员记录</summary>
+      <div class="admin-controls">
+        <input id="adminPassword" type="password" placeholder="输入管理员密码" />
+        <button id="adminLoadBtn" type="button">查看记录</button>
+        <button id="adminExportBtn" type="button" class="secondary">导出CSV</button>
+        <button id="adminClearLocalBtn" type="button" class="secondary">清空本机记录</button>
+      </div>
+      <p id="adminHint" class="hint">默认管理员密码：XDE130-ADMIN。正式使用前请在 config.js 里修改。</p>
+      <div id="adminStats" class="admin-stats"></div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr><th>时间</th><th>姓名</th><th>工号</th><th>角色</th><th>类型</th><th>查询内容</th><th>结果数</th><th>设备</th></tr>
+          </thead>
+          <tbody id="adminLogBody"></tbody>
+        </table>
+      </div>
+    </details>
 
 
     <section class="roadmap-panel">
@@ -179,28 +209,58 @@
   </div>
   <script>
     (function(){
-      var PASSWORD = "XDE130@2026";
+      function cfg(){
+        return window.XDE130_CONFIG || {};
+      }
+      function getPassword(){
+        return cfg().LOGIN_PASSWORD || "XDE130@2026";
+      }
       var gate = document.getElementById("loginGate");
       var shell = document.getElementById("appShell");
-      var input = document.getElementById("loginPassword");
+      var nameInput = document.getElementById("loginName");
+      var idInput = document.getElementById("loginId");
+      var roleInput = document.getElementById("loginRole");
+      var passInput = document.getElementById("loginPassword");
       var btn = document.getElementById("loginBtn");
       var msg = document.getElementById("loginMsg");
+
       function unlock(){
         gate.classList.add("hidden");
         shell.classList.remove("hidden");
       }
-      if (localStorage.getItem("xde130_login_ok") === "yes") unlock();
-      function check(){
-        if ((input.value || "").trim() === PASSWORD) {
+      function getProfile(){
+        try { return JSON.parse(localStorage.getItem("xde130_user_profile") || "null"); }
+        catch(e){ return null; }
+      }
+      var profile = getProfile();
+      if (localStorage.getItem("xde130_login_ok") === "yes" && profile && profile.name) unlock();
+
+      async function check(){
+        var name = (nameInput.value || "").trim();
+        var employeeId = (idInput.value || "").trim();
+        var role = (roleInput.value || "维修人员").trim();
+        if(!name){
+          msg.textContent = "请先输入姓名，方便记录登录痕迹。";
+          nameInput.focus();
+          return;
+        }
+        if ((passInput.value || "").trim() === getPassword()) {
+          var user = { name:name, employeeId:employeeId, role:role };
           localStorage.setItem("xde130_login_ok", "yes");
+          localStorage.setItem("xde130_user_profile", JSON.stringify(user));
+          if(window.XDE130_TRACKER){
+            await window.XDE130_TRACKER.logEvent("login", { queryText:"登录系统", matchedCount:0, detail:{ page:"login" } });
+          }
           unlock();
         } else {
           msg.textContent = "密码不正确，请重新输入。";
-          input.focus();
+          passInput.focus();
         }
       }
       btn.addEventListener("click", check);
-      input.addEventListener("keydown", function(e){ if(e.key === "Enter") check(); });
+      [nameInput, idInput, passInput].forEach(function(el){
+        el.addEventListener("keydown", function(e){ if(e.key === "Enter") check(); });
+      });
     })();
   </script>
 
@@ -213,9 +273,9 @@
         "请输入访问密码":"Enter access password",
         "进入系统":"Enter System",
         "密码不正确，请重新输入。":"Incorrect password. Please try again.",
-        "XDE130 现场故障知识库 · V5.5":"XDE130 On-site Fault Knowledge Base · V5.5",
+        "XDE130 现场故障知识库 · V6":"XDE130 On-site Fault Knowledge Base · V5.5",
         "XDE130故障案例库加操作与维修保养手册":"XDE130 Fault Case Library + Operation and Maintenance Manual",
-        "输入现场故障现象，系统会同时参考历史故障和《XDE130 电传动自卸车操作与保养手册》，输出可能原因、检查顺序、解决方案和安全提醒。":"Enter the on-site fault symptom. The system will reference historical fault cases and the XDE130 Electric Drive Dump Truck Operation and Maintenance Manual to output possible causes, inspection sequence, solutions, and safety reminders.",
+        "输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。":"Enter the on-site fault symptom. The system will reference historical fault cases and the XDE130 Electric Drive Dump Truck Operation and Maintenance Manual to output possible causes, inspection sequence, solutions, and safety reminders.",
         "手机可用":"Mobile Ready",
         "现场查询":"On-site Search",
         "经验沉淀":"Experience Library",
@@ -249,7 +309,7 @@
         "手机访问":"Mobile Access",
         "浏览器打开即可使用，便于现场试点和快速推广。":"Usable directly in a browser, suitable for on-site pilots and rapid promotion.",
         "输入现场故障现象":"Enter On-site Fault Symptom",
-        "智能分析并查询":"Analyze and Search",
+        "服务查询":"Analyze and Search",
         "清空":"Clear",
         "无法启动":"No Start",
         "发动机高温":"Engine Overheating",
@@ -273,7 +333,7 @@
         "当前演示版只展示故障现象、故障系统、小时数、处理建议、手册检查逻辑和安全提醒，不在页面展示服务单号、整机编号、客户、矿区、国家地点、具体日期、保内保外等敏感字段。系统定位为现场辅助判断工具，最终处理仍以现场检测、故障码和公司技术规范为准。":"This demo version only displays fault symptoms, fault system, operating hours, handling suggestions, manual-based checks, and safety reminders. It does not display sensitive fields such as service order number, machine number, customer, mine site, country/location, exact date, or warranty status. The system is an on-site auxiliary decision tool; final handling should follow on-site inspection, fault codes, and company technical standards.",        "输入现场故障现象 / 故障代码":"Enter On-site Fault Symptom / Fault Code",
         "故障代码库":"Fault Code Library",
         "代码查询":"Code Query",
-        "输入故障代码或名称后显示匹配结果；故障代码库明细默认隐藏，点击结果可展开查看现场建议。":"Hydraulic, electrical, powertrain, and drive system fault codes have been imported. Search by code or fault name.",
+        "输入故障代码或报警名称后显示匹配结果；明细默认隐藏，点击结果展开查看现场建议。":"Hydraulic, electrical, powertrain, and drive system fault codes have been imported. Search by code or fault name.",
         "输入故障代码或名称：601 / 制动压力低 / CAN / 电机温度高":"Enter fault code or name: 601 / low brake pressure / CAN / motor high temperature",        "手册知识库":"Manual Knowledge Base",
         "已把操作、保养、故障机器处理、液压/制动/转向/电气/电传动等重点内容整理为本地知识。":"Key content about operation, maintenance, disabled machine handling, hydraulic/brake/steering/electrical/electric drive systems has been organized into local knowledge.",
         "普通搜索：报警 / 漏水 / 轴承 / 处理方法 / 故障系统...":"General search: alarm / coolant leak / bearing / solution / fault system...",
@@ -324,10 +384,10 @@
           "请输入访问密码": "Entrez le mot de passe d'accès",
           "进入系统": "Entrer dans le système",
           "密码不正确，请重新输入。": "Mot de passe incorrect. Veuillez réessayer.",
-          "XDE130 现场故障知识库 · V5.5": "Base de connaissances des pannes sur site XDE130 · V5.5",
+          "XDE130 现场故障知识库 · V6": "Base de connaissances des pannes sur site XDE130 · V5.5",
           "XDE130 现场故障知识库 · V5.2": "Base de connaissances des pannes sur site XDE130 · V5.5",
           "XDE130故障案例库加操作与维修保养手册": "Bibliothèque de cas de pannes XDE130 + Manuel d'utilisation et d'entretien",
-          "输入现场故障现象，系统会同时参考历史故障和《XDE130 电传动自卸车操作与保养手册》，输出可能原因、检查顺序、解决方案和安全提醒。": "Saisissez le phénomène de panne sur site. Le système se réfère aux cas historiques et au manuel d'utilisation et d'entretien du XDE130 pour fournir les causes possibles, l'ordre de contrôle, les solutions et les rappels de sécurité.",
+          "输入故障代码或现场现象，系统输出检查顺序、处理建议和安全提醒，便于服务人员现场快速排查。": "Saisissez le phénomène de panne sur site. Le système se réfère aux cas historiques et au manuel d'utilisation et d'entretien du XDE130 pour fournir les causes possibles, l'ordre de contrôle, les solutions et les rappels de sécurité.",
           "手机可用": "Compatible mobile",
           "现场查询": "Recherche sur site",
           "经验沉淀": "Capitalisation d'expérience",
@@ -361,7 +421,7 @@
           "手机访问": "Accès mobile",
           "浏览器打开即可使用，便于现场试点和快速推广。": "Utilisable dans un navigateur, adapté aux essais sur site et au déploiement rapide.",
           "输入现场故障现象": "Saisir le phénomène de panne",
-          "智能分析并查询": "Analyser et rechercher",
+          "服务查询": "Analyser et rechercher",
           "清空": "Effacer",
           "无法启动": "Ne démarre pas",
           "发动机高温": "Surchauffe moteur",
@@ -438,12 +498,12 @@
       const placeholderMaps = {
         en: {
           "请输入访问密码":"Enter access password",
-          "例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏、发动机黄色报警":"Example: gear shift no response; low brake pressure alarm; high coolant temperature; coolant leak; yellow engine alarm",
+          "例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏":"Example: gear shift no response; low brake pressure alarm; high coolant temperature; coolant leak; yellow engine alarm",
           "普通搜索：报警 / 漏水 / 轴承 / 处理方法 / 故障系统...":"General search: alarm / coolant leak / bearing / solution / fault system..."
         },
         fr: {
           "请输入访问密码":"Entrez le mot de passe d'accès",
-          "例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏、发动机黄色报警":"Exemple : aucune réponse au passage de vitesse ; alarme de pression de freinage basse ; température élevée ; fuite de liquide de refroidissement ; alarme moteur jaune",
+          "例如：601、CAN通信异常、制动压力低报警、车辆挂挡无反应、水温高、防冻液渗漏":"Exemple : aucune réponse au passage de vitesse ; alarme de pression de freinage basse ; température élevée ; fuite de liquide de refroidissement ; alarme moteur jaune",
           "普通搜索：报警 / 漏水 / 轴承 / 处理方法 / 故障系统...":"Recherche générale : alarme / fuite d'eau / roulement / solution / système de panne..."
         }
       };
@@ -494,6 +554,9 @@
     })();
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="tracker.js"></script>
   <script src="data.js"></script>
   <script src="manual_knowledge.js"></script>
   <script src="fault_codes.js"></script>

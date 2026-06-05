@@ -69,3 +69,61 @@
 .code-compact-card .code-detail{border-top:1px solid var(--line);padding:12px 14px;background:rgba(255,255,255,.72)}
 .code-compact-card[open] summary em::after{content:'  ▲'}
 .code-compact-card:not([open]) summary em::after{content:'  ▼'}
+
+
+/* V6 登录痕迹 + 查询记录 */
+.login-card select{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;background:#fff}
+.login-note{display:block;color:var(--muted);margin-top:10px;line-height:1.5}
+.admin-log-panel summary{font-weight:800;cursor:pointer}
+.admin-controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.admin-controls input{border:1px solid var(--line);border-radius:14px;padding:12px;min-width:220px}
+.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+.admin-stats div{background:#f8fbfd;border:1px solid var(--line);border-radius:14px;padding:12px}
+.admin-stats b{display:block;font-size:24px;color:var(--brand)}
+.admin-stats span{color:var(--muted);font-size:13px}
+.admin-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+.admin-table{width:100%;border-collapse:collapse;min-width:900px;font-size:13px}
+.admin-table th,.admin-table td{border-bottom:1px solid #edf1f5;padding:9px 10px;text-align:left;vertical-align:top}
+.admin-table th{background:#f4f8fb;color:#234;position:sticky;top:0}
+.admin-table tr:hover td{background:#fbfdff}
+@media(max-width:860px){.admin-stats{grid-template-columns:repeat(2,1fr)}.admin-controls{display:block}.admin-controls input,.admin-controls button{width:100%;margin:6px 0}}
+
+
+/* V6.1 服务人员专用精简显示：隐藏汇报、统计、案例明细等非现场使用内容 */
+body.service-version .hero-card,
+body.service-version .report-panel,
+body.service-version .value-panel,
+body.service-version .roadmap-panel,
+body.service-version .security-panel,
+body.service-version .manual-panel,
+body.service-version #stats,
+body.service-version main > section.panel:not(.fault-code-panel):not(.admin-log-panel),
+body.service-version .layout {
+  display: none !important;
+}
+body.service-version .hero {
+  grid-template-columns: 1fr !important;
+  padding-bottom: 22px;
+}
+body.service-version .hero h1 {
+  max-width: 900px;
+}
+body.service-version .quick-start-panel,
+body.service-version .ask-panel,
+body.service-version .fault-code-panel,
+body.service-version .answer-box,
+body.service-version .admin-log-panel {
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+body.service-version .answer-side h3:nth-of-type(2),
+body.service-version .answer-side ul {
+  display: none;
+}
+body.service-version .service-note {
+  border-left: 4px solid rgba(37,99,235,.55);
+}
+body.service-version .login-note {
+  display: none;
+}
